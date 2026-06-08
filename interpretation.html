@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interpretation — Vocabulary Lesson</title>
+  <style>
+    /* ─── Design tokens ──────────────────────────────────────────
+       Accessible design principles (Peps McCrea, Apr 2025):
+       - Dark text on pale background; sans-serif only
+       - No all-caps, no italics, no underline in body
+       - Left-aligned text; 1.5 line spacing; generous whitespace
+       - Min 26px body, 38px+ headings for projection
+       - Bold sparingly; colour accents on small elements only
+    ─────────────────────────────────────────────────────────── */
+    :root {
+      --bg:        #F4F3EF;
+      --surface:   #FFFFFF;
+      --navy:      #1C1C3A;
+      --mid:       #4A4858;
+      --faint:     #8E8C9A;
+      --crimson:   #B5302A;
+      --gold-dk:   #C4920A;
+      --green:     #2E6B3E;
+      --green-bg:  #EAF4EA;
+      --green-bd:  #A8D5A8;
+      --border:    #D9D7D0;
+      --radius:    10px;
+      --radius-sm: 6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--navy);
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ─── HUD ────────────────────────────────────────────────── */
+    #hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 46px;
+      background: var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      z-index: 200;
+    }
+    .hud-brand { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--bg); opacity: 0.7; }
+    .hud-counter { font-size: 14px; font-weight: 600; color: var(--bg); opacity: 0.55; }
+    .hud-right { display: flex; gap: 8px; }
+    .hud-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.6);
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .hud-btn:hover { border-color: rgba(255,255,255,0.7); color: rgba(255,255,255,0.9); }
+    .hud-btn.active { background: var(--bg); color: var(--navy); border-color: var(--bg); }
+
+    #progress-bar {
+      position: fixed;
+      top: 46px; left: 0;
+      height: 3px;
+      background: var(--crimson);
+      transition: width 0.5s ease;
+      z-index: 200;
+    }
+
+    /* ─── Blackout overlay ───────────────────────────────────── */
+    #blackout {
+      position: fixed;
+      top: 49px; left: 0; right: 0; bottom: 0;
+      background: #000;
+      z-index: 195;
+      display: none;
+    }
+    #blackout.active { display: block; }
+
+    /* ─── Deck ───────────────────────────────────────────────── */
+    #deck {
+      position: fixed;
+      top: 49px; left: 0; right: 0; bottom: 0;
+      cursor: pointer;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 36px 56px 32px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      overflow: hidden;
+    }
+    .slide.active { opacity: 1; pointer-events: all; }
+
+    /* ─── Reveal animation ───────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .reveal.show { opacity: 1; transform: none; }
+
+    /* ─── Shared type ────────────────────────────────────────── */
+    .slide-heading {
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1.2;
+      margin-bottom: 28px;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--crimson);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 22px;
+      align-self: flex-start;
+      flex-shrink: 0;
+    }
+
+    .key-bar {
+      border-left: 4px solid var(--gold-dk);
+      background: #FDF6E3;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 14px 22px;
+      font-size: 22px;
+      line-height: 1.5;
+      color: var(--navy);
+      flex-shrink: 0;
+    }
+    .key-bar .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold-dk);
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 1 — Title
+    ════════════════════════════════════════════════════════════ */
+    #s1 { background: var(--navy); align-items: flex-start; justify-content: center; }
+    #s1 .context-label { font-size: 18px; font-weight: 600; color: rgba(255,255,255,0.45); margin-bottom: 20px; letter-spacing: 0.04em; }
+    #s1 h1 { font-size: 80px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 20px; letter-spacing: -0.01em; }
+    #s1 .rule { width: 64px; height: 4px; background: var(--crimson); border-radius: 2px; margin-bottom: 20px; }
+    #s1 .subtitle { font-size: 20px; font-weight: 400; color: rgba(255,255,255,0.4); }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 2 — Choral Launch
+    ════════════════════════════════════════════════════════════ */
+    #s2 { background: var(--crimson); align-items: flex-start; justify-content: center; }
+    #s2 .badge { background: rgba(0,0,0,0.25); }
+    #s2 .word-display { font-size: 76px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 36px; }
+    #s2 .cue-label { font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.55); margin-bottom: 12px; }
+    #s2 .cue-box { display: inline-block; background: rgba(0,0,0,0.2); border-radius: var(--radius); padding: 18px 36px; font-size: 28px; font-weight: 700; color: #fff; }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 3 — Syllable Breakdown (5 syllables — chip row)
+    ════════════════════════════════════════════════════════════ */
+    #s3 { background: var(--bg); }
+
+    .syl-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+    .syl-chip {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+    .syl-chip.stressed { border-color: var(--crimson); border-width: 3px; }
+    .syl-chip-text { font-size: 50px; font-weight: 700; color: var(--navy); line-height: 1; margin-bottom: 10px; }
+    .syl-chip.stressed .syl-chip-text { color: var(--crimson); }
+    .syl-chip-label { font-size: 12px; font-weight: 600; color: var(--faint); }
+    .syl-chip.stressed .syl-chip-label { color: var(--crimson); }
+
+    .syl-footer {
+      border-left: 4px solid var(--gold-dk);
+      background: #FDF6E3;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 22px;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--navy);
+      flex-shrink: 0;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .syl-note {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 22px;
+      font-size: 20px;
+      color: var(--mid);
+      line-height: 1.5;
+      flex-shrink: 0;
+    }
+    .syl-note strong { color: var(--navy); }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 4 — Spelling
+    ════════════════════════════════════════════════════════════ */
+    #s4 { background: var(--bg); }
+
+    .spell-word-box {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 32px;
+      text-align: center;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    .spell-word-text { font-size: 68px; font-weight: 700; color: var(--crimson); line-height: 1; letter-spacing: 0.01em; }
+
+    .spell-break-box {
+      background: #FDF6E3;
+      border-left: 4px solid var(--gold-dk);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 28px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    .spell-break-text { font-size: 30px; font-weight: 700; color: var(--navy); letter-spacing: 0.1em; }
+
+    .spell-instruction {
+      background: var(--navy);
+      border-radius: var(--radius-sm);
+      padding: 16px 24px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      text-align: left;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .spell-error {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 22px;
+      font-size: 20px;
+      color: var(--mid);
+      line-height: 1.5;
+      flex-shrink: 0;
+    }
+    .spell-error strong { color: var(--navy); }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 5 — Etymology
+    ════════════════════════════════════════════════════════════ */
+    #s5 { background: var(--bg); }
+
+    .etym-list { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+
+    .etym-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+    .etym-tag {
+      background: var(--crimson);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 3px;
+      min-width: 82px;
+      text-align: center;
+    }
+    .etym-tag.gold-tag { background: var(--gold-dk); }
+    .etym-body { flex: 1; }
+    .etym-title { font-size: 19px; font-weight: 700; color: var(--navy); margin-bottom: 3px; line-height: 1.3; }
+    .etym-desc { font-size: 17px; color: var(--mid); line-height: 1.5; }
+
+    .etym-summary {
+      background: var(--crimson);
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      font-size: 19px;
+      font-weight: 700;
+      color: #fff;
+      text-align: left;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 6 — Definition (two-card layout)
+    ════════════════════════════════════════════════════════════ */
+    #s6 { background: var(--bg); }
+
+    .def-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 28px;
+      margin-bottom: 14px;
+      flex-shrink: 1;
+    }
+    .def-card-label { font-size: 12px; font-weight: 700; color: var(--faint); letter-spacing: 0.06em; display: block; margin-bottom: 8px; }
+    .def-word { font-size: 36px; font-weight: 700; color: var(--crimson); line-height: 1; margin-bottom: 4px; }
+    .def-pos { font-size: 17px; color: var(--faint); margin-bottom: 10px; }
+    .def-text { font-size: 22px; color: var(--navy); line-height: 1.5; }
+
+    .def-card-ts {
+      background: #FDF6E3;
+      border: 1px solid #E8D5A0;
+      border-left: 4px solid var(--gold-dk);
+      border-radius: var(--radius);
+      padding: 20px 28px;
+      margin-bottom: 14px;
+      flex-shrink: 1;
+    }
+    .def-ts-label { font-size: 12px; font-weight: 700; color: var(--gold-dk); letter-spacing: 0.06em; display: block; margin-bottom: 8px; }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 7 — Example Sentences
+    ════════════════════════════════════════════════════════════ */
+    #s7 { background: var(--bg); }
+
+    .ex-list { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; }
+    .ex-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 22px;
+      display: flex;
+      align-items: flex-start;
+      gap: 18px;
+      flex: 1;
+    }
+    .ex-num {
+      width: 34px; height: 34px;
+      background: var(--crimson);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .ex-body { flex: 1; }
+    .ex-text { font-size: 22px; color: var(--navy); line-height: 1.5; }
+    .ex-text mark { background: none; font-weight: 700; color: var(--crimson); }
+    .ex-label { font-size: 13px; font-weight: 600; color: var(--faint); margin-top: 6px; }
+    .ex-label.wrong { color: var(--crimson); }
+
+    .talk-bar {
+      background: var(--crimson);
+      border-radius: var(--radius-sm);
+      padding: 14px 24px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      text-align: left;
+    }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 8 — Choral Recall
+    ════════════════════════════════════════════════════════════ */
+    #s8 { background: var(--navy); align-items: flex-start; justify-content: center; }
+    #s8 .badge { background: rgba(255,255,255,0.15); }
+    #s8 .recall-q { font-size: 44px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 12px; }
+    #s8 .recall-sub { font-size: 22px; font-weight: 400; color: rgba(255,255,255,0.45); margin-bottom: 44px; line-height: 1.5; }
+    .recall-go { display: inline-block; background: var(--crimson); color: #fff; font-size: 34px; font-weight: 700; padding: 18px 52px; border-radius: var(--radius); }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 9 — Quick Check
+    ════════════════════════════════════════════════════════════ */
+    #s9 { background: var(--bg); }
+
+    .frame-card { border-radius: var(--radius); padding: 22px 28px; margin-bottom: 14px; flex-shrink: 0; }
+    .frame-label { font-size: 12px; font-weight: 700; letter-spacing: 0.07em; display: block; margin-bottom: 10px; }
+    .frame-text { font-size: 24px; color: var(--navy); line-height: 1.5; }
+    .teacher-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--navy); }
+    .teacher-card .frame-label { color: var(--mid); }
+    .student-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--crimson); }
+    .student-card .frame-label { color: var(--crimson); }
+    .student-card-affirm { background: var(--green-bg); border: 1px solid var(--green-bd); border-left: 4px solid var(--green); }
+    .student-card-affirm .frame-label { color: var(--green); }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 10 — Sample Response
+    ════════════════════════════════════════════════════════════ */
+    #s10 { background: var(--bg); }
+
+    /* ════════════════════════════════════════════════════════════
+       SLIDE 11 — Key Takeaways
+    ════════════════════════════════════════════════════════════ */
+    #s11 { background: var(--bg); }
+
+    .ta-list { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+    .ta-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 22px;
+      display: flex; align-items: center; gap: 18px;
+      flex: 1;
+    }
+    .ta-num {
+      width: 40px; height: 40px;
+      background: var(--crimson);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 20px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .ta-text { font-size: 24px; color: var(--navy); line-height: 1.4; }
+    .ta-text strong { color: var(--crimson); }
+    .ta-footer { font-size: 18px; color: var(--faint); text-align: left; margin-top: 10px; flex-shrink: 0; line-height: 1.5; }
+
+    /* ─── Nav arrows ─────────────────────────────────────────── */
+    .nav-arrow {
+      position: fixed; top: 50%; transform: translateY(-50%);
+      width: 36px; height: 72px;
+      background: rgba(28,28,58,0.07); border: none; border-radius: 6px;
+      color: rgba(28,28,58,0.25); font-size: 18px; cursor: pointer; z-index: 150;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, color 0.2s;
+    }
+    .nav-arrow:hover { background: rgba(28,28,58,0.15); color: var(--navy); }
+    #nav-prev { left: 8px; }
+    #nav-next { right: 8px; }
+
+    /* ─── Hint ───────────────────────────────────────────────── */
+    #hint {
+      position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+      font-size: 12px; letter-spacing: 0.08em; color: var(--faint);
+      pointer-events: none; transition: opacity 0.6s; white-space: nowrap;
+    }
+
+    /* ─── Teacher Notes ──────────────────────────────────────── */
+    #notes-panel {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--navy); border-top: 3px solid var(--crimson);
+      padding: 18px 56px 24px; z-index: 300;
+      transform: translateY(100%); transition: transform 0.35s ease;
+      max-height: 38vh; overflow-y: auto;
+    }
+    #notes-panel.open { transform: translateY(0); }
+    .notes-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.45); margin-bottom: 10px; }
+    .notes-body { font-size: 16px; color: rgba(255,255,255,0.85); line-height: 1.7; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+<!-- ─── HUD ──────────────────────────────────────────────────── -->
+<div id="hud">
+  <div class="hud-brand">Vocabulary Workstation</div>
+  <div class="hud-counter" id="counter">1 / 11</div>
+  <div class="hud-right">
+    <button class="hud-btn" id="blackout-btn" onclick="toggleBlackout(event)">Blackout (B)</button>
+    <button class="hud-btn" id="notes-btn" onclick="toggleNotes(event)">Notes (N)</button>
+    <button class="hud-btn" onclick="goBack(event)">&#8592; Back</button>
+  </div>
+</div>
+<div id="progress-bar" style="width:0%"></div>
+<div id="blackout"></div>
+
+<!-- ─── Deck ─────────────────────────────────────────────────── -->
+<div id="deck" onclick="advance()">
+
+  <!-- SLIDE 1 — Title -->
+  <div class="slide active" id="s1" data-reveals="0">
+    <div class="context-label">Theatre Studies · Performance and directing</div>
+    <h1>interpretation</h1>
+    <div class="rule"></div>
+    <div class="subtitle">A vocabulary lesson</div>
+  </div>
+
+  <!-- SLIDE 2 — Choral Launch -->
+  <div class="slide" id="s2" data-reveals="0">
+    <div class="badge">Word launch</div>
+    <div class="word-display">interpretation</div>
+    <div class="cue-label">Say it together</div>
+    <div class="cue-box">Say it with me on &nbsp; 3 · 2 · 1 → GO</div>
+  </div>
+
+  <!-- SLIDE 3 — Syllable Breakdown -->
+  <div class="slide" id="s3" data-reveals="3">
+    <div class="badge">Syllable breakdown</div>
+    <div class="slide-heading">How do we say it?</div>
+    <div class="syl-row reveal" data-step="1">
+      <div class="syl-chip">
+        <div class="syl-chip-text">in</div>
+        <div class="syl-chip-label">Unstressed</div>
+      </div>
+      <div class="syl-chip">
+        <div class="syl-chip-text">ter</div>
+        <div class="syl-chip-label">Unstressed</div>
+      </div>
+      <div class="syl-chip">
+        <div class="syl-chip-text">pre</div>
+        <div class="syl-chip-label">Unstressed</div>
+      </div>
+      <div class="syl-chip stressed">
+        <div class="syl-chip-text">TAY</div>
+        <div class="syl-chip-label">Stressed syllable</div>
+      </div>
+      <div class="syl-chip">
+        <div class="syl-chip-text">tion</div>
+        <div class="syl-chip-label">Unstressed</div>
+      </div>
+    </div>
+    <div class="syl-footer reveal" data-step="2">
+      5 syllables &nbsp;·&nbsp; Stress on <strong>TAY</strong> &nbsp;·&nbsp; /ɪnˌtɜːprɪˈteɪʃən/
+    </div>
+    <div class="syl-note reveal" data-step="3">
+      <strong>Tip:</strong> Build it from a word you already know — <strong>interpret</strong> + <strong>ation</strong>. Say "interpret" first, then add "-ation" and let the stress shift naturally onto TAY.
+    </div>
+  </div>
+
+  <!-- SLIDE 4 — Spelling -->
+  <div class="slide" id="s4" data-reveals="4">
+    <div class="badge">Spelling</div>
+    <div class="slide-heading">How do we write it?</div>
+    <div class="spell-word-box reveal" data-step="1">
+      <div class="spell-word-text">interpretation</div>
+    </div>
+    <div class="spell-break-box reveal" data-step="2">
+      <div class="spell-break-text">in &nbsp;·&nbsp; ter &nbsp;·&nbsp; pre &nbsp;·&nbsp; ta &nbsp;·&nbsp; tion</div>
+    </div>
+    <div class="spell-instruction reveal" data-step="3">
+      Cover it up. Write it from memory. Then check.
+    </div>
+    <div class="spell-error reveal" data-step="4">
+      <strong>Common errors:</strong> "interpration" (dropping the e in -pre-), "interpretaion" (missing the t before -ion), "interpetation" (dropping the r). A useful anchor: spell <strong>interpret</strong> first, then add <strong>ation</strong>.
+    </div>
+  </div>
+
+  <!-- SLIDE 5 — Etymology -->
+  <div class="slide" id="s5" data-reveals="4">
+    <div class="badge">Etymology</div>
+    <div class="slide-heading">Where does the word come from?</div>
+    <div class="etym-list">
+      <div class="etym-row reveal" data-step="1">
+        <div class="etym-tag">Origin</div>
+        <div class="etym-body">
+          <div class="etym-title">Latin — interpretatio, via Old French</div>
+          <div class="etym-desc">From classical Latin <span style="font-weight:700">interpretatio</span> (explanation, translation), from <span style="font-weight:700">interpretari</span> (to explain, to expound). Entered English in the 14th century.</div>
+        </div>
+      </div>
+      <div class="etym-row reveal" data-step="2">
+        <div class="etym-tag gold-tag">inter-</div>
+        <div class="etym-body">
+          <div class="etym-title">"Between"</div>
+          <div class="etym-desc">A Latin prefix meaning "between" or "among." You can see it in <strong>intervene</strong> (come between), <strong>interact</strong> (act between), <strong>interrupt</strong> (break between).</div>
+        </div>
+      </div>
+      <div class="etym-row reveal" data-step="3">
+        <div class="etym-tag gold-tag">interpres</div>
+        <div class="etym-body">
+          <div class="etym-title">An agent or go-between</div>
+          <div class="etym-desc">The Latin root word for an agent who explains one thing to another person — a broker, a negotiator, a translator. An <span style="font-weight:700">interpres</span> stood between a source and an audience, making meaning accessible.</div>
+        </div>
+      </div>
+      <div class="etym-summary reveal" data-step="4">
+        interpres (a go-between) → interpretatio = the act of standing between a text and an audience, making meaning from it
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 — Definition (two cards) -->
+  <div class="slide" id="s6" data-reveals="3">
+    <div class="badge">Definition</div>
+    <div class="slide-heading">What does it mean?</div>
+
+    <div class="def-card reveal" data-step="1">
+      <span class="def-card-label">General meaning</span>
+      <div class="def-word">interpretation</div>
+      <div class="def-pos">noun</div>
+      <div class="def-text">The particular way someone understands or explains something — the meaning they make from it. An interpretation is one of many possible readings of the same thing; it is not the only answer, but it must be justified.</div>
+    </div>
+
+    <div class="def-card-ts reveal" data-step="2">
+      <span class="def-ts-label">In Theatre Studies</span>
+      <div class="def-text">The creative decisions made by a director, actor, or designer that give a production its distinctive meaning. To interpret a script is to make deliberate choices about what the text means and how those meanings should be communicated to an audience. Every production of the same play offers a different interpretation.</div>
+    </div>
+
+    <div class="key-bar reveal" data-step="3">
+      <span class="label">Key idea</span>
+      There is no single correct interpretation of a script — but every interpretation must be justified by evidence in the text. Saying what you chose is not enough; you must explain why.
+    </div>
+  </div>
+
+  <!-- SLIDE 7 — Example Sentences -->
+  <!-- Wrong answer is C this time. Labels reveal at step 4. Talk prompt at step 5. -->
+  <div class="slide" id="s7" data-reveals="5">
+    <div class="badge">Example sentences</div>
+    <div class="slide-heading">Which one is the odd one out?</div>
+    <div class="ex-list">
+      <div class="ex-row reveal" data-step="1">
+        <div class="ex-num">A</div>
+        <div class="ex-body">
+          <div class="ex-text">The director's <mark>interpretation</mark> of Hamlet placed the action in a contemporary corporate setting, suggesting that the play's themes of corruption and betrayal are as relevant today as in Elizabethan England.</div>
+          <div class="ex-label reveal" data-step="4">Correct use</div>
+        </div>
+      </div>
+      <div class="ex-row reveal" data-step="2">
+        <div class="ex-num">B</div>
+        <div class="ex-body">
+          <div class="ex-text">Two actors can read the same line in completely different ways — each brings their own <mark>interpretation</mark> to the text based on their understanding of the character's psychology and objective.</div>
+          <div class="ex-label reveal" data-step="4">Correct use</div>
+        </div>
+      </div>
+      <div class="ex-row reveal" data-step="3">
+        <div class="ex-num">C</div>
+        <div class="ex-body">
+          <div class="ex-text">The actor gave a powerful <mark>interpretation</mark> during the performance, moving confidently across the stage and commanding the attention of the entire audience.</div>
+          <div class="ex-label wrong reveal" data-step="4">Incorrect — why?</div>
+        </div>
+      </div>
+    </div>
+    <div class="talk-bar reveal" data-step="5">
+      Turn and talk: Which one is wrong? Look carefully at how the word is being used — does it actually mean what the sentence needs it to mean?
+    </div>
+  </div>
+
+  <!-- SLIDE 8 — Choral Recall -->
+  <div class="slide" id="s8" data-reveals="1">
+    <div class="badge">Choral recall</div>
+    <div class="recall-q">What does interpretation mean?</div>
+    <div class="recall-sub">Think about it … then say it together when you see the signal.</div>
+    <div class="reveal" data-step="1">
+      <div class="recall-go">1 &nbsp;·&nbsp; 2 &nbsp;·&nbsp; 3 &nbsp;→&nbsp; GO</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9 — Quick Check (AFFIRMING) -->
+  <div class="slide" id="s9" data-reveals="3">
+    <div class="badge">Quick check</div>
+    <div class="slide-heading">Show what you know</div>
+
+    <div class="frame-card teacher-card reveal" data-step="1">
+      <span class="frame-label">Teacher asked</span>
+      <div class="frame-text">"What does it mean to interpret a script?"</div>
+    </div>
+
+    <div class="frame-card student-card-affirm reveal" data-step="2">
+      <span class="frame-label">Student responded</span>
+      <div class="frame-text">"To interpret a script means to make deliberate creative decisions about what the text means and how those meanings should be communicated to an audience. For example, a director might interpret a scene of domestic conflict as a comment on power — choosing staging and costume that reinforces that reading."</div>
+    </div>
+
+    <div class="key-bar reveal" data-step="3">
+      <span class="label">Discuss</span>
+      Is this a strong response? What has this student done well?
+    </div>
+  </div>
+
+  <!-- SLIDE 10 — Sample Response -->
+  <div class="slide" id="s10" data-reveals="2">
+    <div class="badge">Sample response</div>
+    <div class="slide-heading">What makes this strong</div>
+
+    <div class="frame-card teacher-card reveal" data-step="1">
+      <span class="frame-label">Teacher asked</span>
+      <div class="frame-text">"What does it mean to interpret a script?"</div>
+    </div>
+
+    <div class="reveal" data-step="2" style="background:var(--green-bg); border:1px solid var(--green-bd); border-left:4px solid var(--green); border-radius:var(--radius); padding:22px 28px; margin-bottom:14px; flex-shrink:0;">
+      <span style="font-size:12px; font-weight:700; letter-spacing:0.07em; color:var(--green); display:block; margin-bottom:10px;">What makes this strong</span>
+      <div style="font-size:20px; color:var(--navy); line-height:1.6;">
+        <div style="margin-bottom:10px;">1. It defines interpretation as <strong>deliberate creative decisions</strong> — not just any choice, but purposeful ones.</div>
+        <div style="margin-bottom:10px;">2. It explains the purpose: communicating <strong>meaning to an audience</strong> — interpretation is always outward-facing.</div>
+        <div style="margin-bottom:10px;">3. It gives a <strong>concrete example</strong> that shows how interpretation works in practice.</div>
+        <div>4. It uses the word <strong>reading</strong> — showing understanding that an interpretation is one of many possible meanings, not the only answer.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 11 — Key Takeaways -->
+  <div class="slide" id="s11" data-reveals="5">
+    <div class="badge">Key takeaways</div>
+    <div class="slide-heading">What we learned today</div>
+    <div class="ta-list">
+      <div class="ta-row reveal" data-step="1">
+        <div class="ta-num">1</div>
+        <div class="ta-text"><strong>interpretation</strong> comes from Latin interpres — a go-between who stands between a text and an audience, making meaning accessible</div>
+      </div>
+      <div class="ta-row reveal" data-step="2">
+        <div class="ta-num">2</div>
+        <div class="ta-text">An interpretation is always <strong>one of many possible readings</strong> — not the only answer, but a justified one grounded in the text</div>
+      </div>
+      <div class="ta-row reveal" data-step="3">
+        <div class="ta-num">3</div>
+        <div class="ta-text">In Theatre Studies: interpret means to make <strong>deliberate creative decisions</strong> about what a text means and how to communicate those meanings to an audience</div>
+      </div>
+      <div class="ta-row reveal" data-step="4">
+        <div class="ta-num">4</div>
+        <div class="ta-text">Pronounced in-ter-pre-<strong>TAY</strong>-tion — 5 syllables, stress on TAY — spell it as <strong>interpret</strong> + <strong>ation</strong></div>
+      </div>
+    </div>
+    <div class="ta-footer reveal" data-step="5">
+      One more word in the toolkit.
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- ─── Nav arrows ────────────────────────────────────────────── -->
+<button class="nav-arrow" id="nav-prev" onclick="goBack(event)">&#8592;</button>
+<button class="nav-arrow" id="nav-next" onclick="advance()">&#8594;</button>
+
+<!-- ─── Hint ──────────────────────────────────────────────────── -->
+<div id="hint">Click · Space · Arrow keys · Presenter clicker to advance</div>
+
+<!-- ─── Teacher Notes ─────────────────────────────────────────── -->
+<div id="notes-panel">
+  <div class="notes-label">Teacher notes — slide <span id="notes-num">1</span></div>
+  <div class="notes-body" id="notes-body"></div>
+</div>
+
+<script>
+const NOTES = [
+  /* 0 — Title */
+  `· Set the scene: "This word is everywhere in Theatre Studies — and a lot of students use it without really understanding what it means. Today we fix that."
+· Allow 10–15 seconds of silent reading before speaking.
+· Ask: "Have you ever read a script and imagined it completely differently to how someone else read it? That is interpretation."`,
+
+  /* 1 — Choral Launch */
+  `· Count down clearly and point to the word on GO.
+· This is a long word — do the choral response twice if the first run is uneven.
+· Timing: 30–40 seconds.`,
+
+  /* 2 — Syllable Breakdown */
+  `· Before clicking, ask: "How many syllables? Where is the stress?" Students often say five but stress the wrong syllable.
+· Reveal all five chips at once (step 1), then the footer (step 2), then the tip (step 3).
+· Say it slowly as a class, clapping each syllable: in – ter – pre – TAY – tion.
+· The tip is important: "interpret" is a word students already know. Adding "-ation" and letting the stress shift is an easier path than learning the whole word from scratch.
+· Tip: Students sometimes say "in-TER-pre-ta-tion" — stress falls on TAY, not TER.
+· Timing: 2 minutes.`,
+
+  /* 3 — Spelling */
+  `· Reveal the word → students study it for 5 seconds.
+· Reveal the syllable break: "Five parts — in, ter, pre, ta, tion. Or just: interpret + ation."
+· Reveal the instruction → students write from memory → reveal to self-check.
+· Watch for: dropping the e in "pre" (most common), dropping the t before -ion, dropping the r entirely.
+· The anchor "interpret + ation" prevents most of these errors.
+· Timing: 2 minutes.`,
+
+  /* 4 — Etymology */
+  `· Click through: Origin → inter- → interpres → Summary.
+· Pause after interpres: "So the original meaning was about someone who stands between — a translator, a broker, a go-between. How does that connect to what a director or actor does?" The insight: they stand between the script and the audience.
+· Pause after the summary: "This means that every time you interpret something in theatre, you are acting as that go-between — making meaning accessible to an audience."
+· Timing: 2–3 minutes.`,
+
+  /* 5 — Definition */
+  `· Reveal the general definition. Read aloud together.
+· Key point: "one of many possible readings" — interpretation is always relative. There is no single correct interpretation.
+· Reveal the Theatre Studies definition. Ask: "What is the key word in this definition?" — deliberate. Interpretation is not accidental; it is the result of choices.
+· Reveal the Key Idea. This is the exam-writing principle: choosing is not enough — you must justify.
+· Tip: Students often write "the director interpreted the play as..." without explaining why. The Key Idea is the correction.`,
+
+  /* 6 — Example Sentences */
+  `· Reveal one card at a time. After A, B, and C are all visible, give 30 seconds of pair discussion before revealing the talk prompt.
+· Answer: C is wrong — "gave a powerful interpretation... moving confidently across the stage and commanding the attention" describes physical performance quality (stage presence, confidence) not interpretive decision-making. The word is being used as a synonym for "performance." The correct word here would be "performance" or "portrayal."
+· The key test: does the sentence describe a creative decision about meaning? A and B do. C describes how the actor physically performed.
+· Timing: 2–3 minutes.`,
+
+  /* 7 — Choral Recall */
+  `· No new content — retrieval only.
+· After the GO cue appears, pause 5 seconds before the choral response.
+· If the response is weak or scattered, do not accept it: "I didn't hear everyone — again, on 3."
+· Timing: 45–60 seconds.`,
+
+  /* 8 — Quick Check (AFFIRMING) */
+  `· Reveal the teacher question, then pause.
+· Reveal the student response (green card — this is a strong response). Give 30–60 seconds for students to form a view before revealing the discussion prompt.
+· This is an AFFIRMING discussion — students identify what the response does well.
+· What to draw out:
+  - "deliberate creative decisions" — precise, correct use of interpretation
+  - "communicated to an audience" — correctly identifies the outward-facing purpose
+  - The concrete example shows understanding in action
+  - "that reading" — shows awareness that this is one of many possible interpretations
+· Ask: "Could you add anything to make this even stronger?" — e.g. specifying which specific staging or costume choice, or naming the theatrical style.
+· Timing: 3–4 minutes.`,
+
+  /* 9 — Sample Response */
+  `· Reveal the teacher question (context reset), then the breakdown.
+· Read through each point with the class. Ask students to check their own responses: "Did your answer include all four of these moves?"
+· Point 4 (using "reading") is worth dwelling on — it signals to an examiner that the student understands interpretation as relative, not absolute.
+· If time permits, ask: "Write one sentence that adds to the student response — what could you say next?"
+· Timing: 2–3 minutes.`,
+
+  /* 10 — Key Takeaways */
+  `· Click through each row — do not show all at once.
+· For rows 1–3, invite students to restate the takeaway in their own words before moving on.
+· Row 2 is the philosophical core — worth pausing on: "There is no single correct interpretation. But that does not mean anything goes — it must be justified."
+· Row 4 is a quick pronunciation and spelling consolidation.
+· Timing: 1–2 minutes.`,
+];
+
+/* ─── State ────────────────────────────────────── */
+let current    = 0;
+let revealStep = 0;
+let notesOpen  = false;
+let blackoutOn = false;
+
+const slides        = [...document.querySelectorAll('.slide')];
+const total         = slides.length;
+const counterEl     = document.getElementById('counter');
+const progressEl    = document.getElementById('progress-bar');
+const notesPanelEl  = document.getElementById('notes-panel');
+const notesBtnEl    = document.getElementById('notes-btn');
+const notesNumEl    = document.getElementById('notes-num');
+const notesBodyEl   = document.getElementById('notes-body');
+const hintEl        = document.getElementById('hint');
+const blackoutEl    = document.getElementById('blackout');
+const blackoutBtnEl = document.getElementById('blackout-btn');
+
+/* ─── Helpers ──────────────────────────────────── */
+function maxReveals(idx) { return parseInt(slides[idx].dataset.reveals, 10) || 0; }
+function setReveal(idx, step, show) {
+  slides[idx].querySelectorAll(`.reveal[data-step="${step}"]`).forEach(el => el.classList.toggle('show', show));
+}
+function showAllReveals(idx) {
+  const max = maxReveals(idx);
+  for (let i = 1; i <= max; i++) setReveal(idx, i, true);
+  revealStep = max;
+}
+function clearAllReveals(idx) {
+  slides[idx].querySelectorAll('.reveal').forEach(el => el.classList.remove('show'));
+  revealStep = 0;
+}
+function goToSlide(idx) {
+  slides[current].classList.remove('active');
+  current = idx;
+  slides[current].classList.add('active');
+  clearAllReveals(current);
+  updateHUD();
+}
+function updateHUD() {
+  counterEl.textContent = `${current + 1} / ${total}`;
+  progressEl.style.width = (current / (total - 1) * 100) + '%';
+  notesNumEl.textContent = current + 1;
+  notesBodyEl.textContent = NOTES[current] || '';
+}
+
+/* ─── Navigation ───────────────────────────────── */
+function advance() {
+  const max = maxReveals(current);
+  if (revealStep < max) {
+    revealStep++;
+    setReveal(current, revealStep, true);
+  } else if (current < total - 1) {
+    goToSlide(current + 1);
+  }
+  flashHint();
+}
+function goBack(e) {
+  if (e) e.stopPropagation();
+  if (revealStep > 0) {
+    setReveal(current, revealStep, false);
+    revealStep--;
+  } else if (current > 0) {
+    slides[current].classList.remove('active');
+    current--;
+    slides[current].classList.add('active');
+    showAllReveals(current);
+    updateHUD();
+  }
+}
+function toggleNotes(e) {
+  if (e) e.stopPropagation();
+  notesOpen = !notesOpen;
+  notesPanelEl.classList.toggle('open', notesOpen);
+  notesBtnEl.classList.toggle('active', notesOpen);
+}
+function toggleBlackout(e) {
+  if (e) e.stopPropagation();
+  blackoutOn = !blackoutOn;
+  blackoutEl.classList.toggle('active', blackoutOn);
+  blackoutBtnEl.classList.toggle('active', blackoutOn);
+}
+
+let hintTimer;
+function flashHint() {
+  hintEl.style.opacity = '0';
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => hintEl.style.opacity = '1', 5000);
+}
+
+/* ─── Keyboard (including presenter clicker: PageDown / PageUp) ─ */
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'ArrowRight' || e.code === 'PageDown') { e.preventDefault(); advance(); }
+  if (e.code === 'ArrowLeft' || e.code === 'Backspace' || e.code === 'PageUp') { e.preventDefault(); goBack(); }
+  if (e.code === 'KeyN') toggleNotes();
+  if (e.code === 'KeyB') toggleBlackout();
+});
+
+/* ─── Touch swipe ──────────────────────────────── */
+let touchX = 0;
+document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 60) { dx < 0 ? advance() : goBack(); }
+});
+
+/* ─── Init ─────────────────────────────────────── */
+updateHUD();
+</script>
+</body>
+</html>

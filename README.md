@@ -4,10 +4,7 @@ All claude generated content for Theatre Studies
 <!-- TOC:START -->
 ## Pages
 
-- [Influence](Influence)
-- [ ](-)
-- [Vocabulary](Vocabulary)
-- [Lesson](Lesson.html)
+- [Influence Vocabulary Lesson](Influence - Vocabulary Lesson.html)
 - [Influence](influence.html)
 - [Test](test.html)
 

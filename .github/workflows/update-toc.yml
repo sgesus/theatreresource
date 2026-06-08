@@ -17,20 +17,21 @@ jobs:
 
       - name: Generate table of contents
         run: |
-          # Find all .html files, excluding index.html, sorted alphabetically
-          HTML_FILES=$(find . -maxdepth 1 -name "*.html" ! -name "index.html" | sort | sed 's|^\./||')
-
-          # Build the markdown table of contents
+          # Find all .html files, excluding index.html, null-delimited and sorted
+          # -print0 / read -d '' preserves filenames with spaces correctly
           TOC="## Pages\n\n"
+          FILE_COUNT=0
 
-          if [ -z "$HTML_FILES" ]; then
-            TOC="${TOC}_No pages found yet._\n"
-          else
-            for file in $HTML_FILES; do
-              # Derive a display name: strip .html, replace hyphens/underscores with spaces, title-case
-              name=$(basename "$file" .html | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); print}')
-              TOC="${TOC}- [${name}](${file})\n"
-            done
+          while IFS= read -r -d '' file; do
+            file=$(echo "$file" | sed 's|^\./||')
+            # Derive a display name: strip .html, replace hyphens/underscores with spaces, title-case
+            name=$(basename "$file" .html | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); print}')
+            TOC="${TOC}- [${name}](${file})\n"
+            FILE_COUNT=$((FILE_COUNT + 1))
+          done < <(find . -maxdepth 1 -name "*.html" ! -name "index.html" -print0 | sort -z)
+
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            TOC="## Pages\n\n_No pages found yet._\n"
           fi
 
           # Markers that wrap the managed section in README.md

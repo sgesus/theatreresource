@@ -1,0 +1,62 @@
+name: Update README Table of Contents
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-toc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate table of contents
+        run: |
+          # Find all .html files, excluding index.html, sorted alphabetically
+          HTML_FILES=$(find . -maxdepth 1 -name "*.html" ! -name "index.html" | sort | sed 's|^\./||')
+
+          # Build the markdown table of contents
+          TOC="## Pages\n\n"
+
+          if [ -z "$HTML_FILES" ]; then
+            TOC="${TOC}_No pages found yet._\n"
+          else
+            for file in $HTML_FILES; do
+              # Derive a display name: strip .html, replace hyphens/underscores with spaces, title-case
+              name=$(basename "$file" .html | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2)); print}')
+              TOC="${TOC}- [${name}](${file})\n"
+            done
+          fi
+
+          # Markers that wrap the managed section in README.md
+          START_MARKER="<!-- TOC:START -->"
+          END_MARKER="<!-- TOC:END -->"
+
+          # If README.md doesn't exist yet, create a minimal one
+          if [ ! -f README.md ]; then
+            echo -e "# My Site\n\n${START_MARKER}\n${END_MARKER}" > README.md
+          fi
+
+          # If markers aren't in the README, append them
+          if ! grep -q "$START_MARKER" README.md; then
+            echo -e "\n${START_MARKER}\n${END_MARKER}" >> README.md
+          fi
+
+          # Replace everything between the markers with the new TOC
+          NEW_BLOCK="${START_MARKER}\n${TOC}\n${END_MARKER}"
+          # Use perl for reliable multi-line replacement
+          perl -i -0pe "s|${START_MARKER}.*?${END_MARKER}|${NEW_BLOCK}|s" README.md
+
+      - name: Commit updated README
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          # Only commit if something actually changed
+          git diff --cached --quiet || git commit -m "docs: update table of contents [skip ci]"
+          git push

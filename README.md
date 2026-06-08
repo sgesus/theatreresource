@@ -5,6 +5,7 @@ All claude generated content for Theatre Studies
 ## Pages
 
 - [Influence](influence.html)
+- [Interpretation](interpretation.html)
 - [Test](test.html)
 
 <!-- TOC:END -->
